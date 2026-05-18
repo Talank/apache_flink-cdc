@@ -16,12 +16,6 @@
 name: Flink CDC CI
 on:
   push:
-    branches:
-      - master
-      - release-*
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
   pull_request:
     branches:
       - master
@@ -30,6 +24,7 @@ on:
       - 'docs/**'
       - 'README.md'
 
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.number || github.run_id }}
   cancel-in-progress: true
@@ -37,7 +32,7 @@ concurrency:
 jobs:
   license_check:
     name: License Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v6
@@ -57,6 +52,13 @@ jobs:
         run: mvn --no-snapshot-updates -B package -DskipTests
       - name: Run license check
         run: gem install rubyzip -v 2.3.0 && ./tools/ci/license_check.rb
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+      fail-fast: false
   common:
     name: Common Unit Tests
     uses: ./.github/workflows/flink_cdc_base.yml
@@ -76,7 +78,8 @@ jobs:
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
       java-versions: "[11]"
-      modules: "['doris, elasticsearch, fluss, hudi, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline, starrocks, oracle-pipeline']"
+      modules: "['doris, elasticsearch, fluss, hudi, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon,
+        postgres-pipeline, starrocks, oracle-pipeline']"
   pipeline-connectors-ut-2-x:
     name: Pipeline Connectors Unit Tests 2.x
     uses: ./.github/workflows/flink_cdc_base.yml
@@ -84,7 +87,8 @@ jobs:
       java-versions: "[11]"
       flink-versions: "['2.2.0']"
       custom-maven-parameter: "-Pflink2"
-      modules: "['doris, elasticsearch, fluss, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline, starrocks, oracle-pipeline']"
+      modules: "['doris, elasticsearch, fluss, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline,
+        starrocks, oracle-pipeline']"
   source-ut:
     name: Source Unit Tests
     uses: ./.github/workflows/flink_cdc_base.yml
@@ -104,7 +108,7 @@ jobs:
       max-parallel: 2
       fail-fast: false
       matrix:
-        parallelism: [ 1, 4 ]
+        parallelism: [1, 4]
     name: Pipeline E2E Tests (${{ matrix.parallelism }}-Parallelism)
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
@@ -117,7 +121,7 @@ jobs:
       max-parallel: 2
       fail-fast: false
       matrix:
-        parallelism: [ 1, 4 ]
+        parallelism: [1, 4]
     name: Pipeline E2E Tests 2.x (${{ matrix.parallelism }}-Parallelism)
     uses: ./.github/workflows/flink_cdc_base.yml
     with:

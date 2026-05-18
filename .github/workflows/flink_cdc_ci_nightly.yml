@@ -18,6 +18,7 @@ on:
   schedule:
     - cron: '43 0 * * *' # Run daily, but not at 00:00 UTC to avoid job failure due to network throttle
   workflow_dispatch:
+  push:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.number || github.run_id }}
@@ -25,9 +26,9 @@ concurrency:
 
 jobs:
   license_check:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: License Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v6
@@ -47,15 +48,22 @@ jobs:
         run: mvn --no-snapshot-updates -B package -DskipTests
       - name: Run license check
         run: gem install rubyzip -v 2.3.0 && ./tools/ci/license_check.rb
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+      fail-fast: false
   common:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Common Unit Tests
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
       java-versions: "[17]"
       modules: "['core']"
   common_2_x:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Common Unit Tests 2.x
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
@@ -64,30 +72,32 @@ jobs:
       custom-maven-parameter: "-Pflink2"
       modules: "['core']"
   pipeline-ut:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Pipeline Unit Tests
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
       java-versions: "[17]"
-      modules: "['doris, elasticsearch, fluss, hudi, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline, starrocks, oracle-pipeline']"
+      modules: "['doris, elasticsearch, fluss, hudi, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon,
+        postgres-pipeline, starrocks, oracle-pipeline']"
   pipeline-connectors-ut-2-x:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Pipeline Connectors Unit Tests 2.x
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
       java-versions: "[17]"
       flink-versions: "['2.2.0']"
       custom-maven-parameter: "-Pflink2"
-      modules: "['doris, elasticsearch, fluss, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline, starrocks, oracle-pipeline']"
+      modules: "['doris, elasticsearch, fluss, iceberg, kafka, maxcompute, mysql-pipeline, oceanbase-pipeline, paimon, postgres-pipeline,
+        starrocks, oracle-pipeline']"
   source-ut:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Source Unit Tests
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
       java-versions: "[17]"
       modules: "['mysql-source', 'postgres-source, oceanbase-source, tidb, vitess', 'oracle, sqlserver', 'db2, mongodb']"
   source-ut-2-x:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Source Unit Tests 2.x
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
@@ -96,12 +106,12 @@ jobs:
       custom-maven-parameter: "-Pflink2"
       modules: "['mysql-source', 'postgres-source, oceanbase-source, tidb, vitess', 'oracle, sqlserver', 'db2, mongodb']"
   pipeline_e2e:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     strategy:
       max-parallel: 2
       fail-fast: false
       matrix:
-        parallelism: [ 1, 4 ]
+        parallelism: [1, 4]
     name: Pipeline E2E Tests (${{ matrix.parallelism }}-Parallelism)
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
@@ -110,12 +120,12 @@ jobs:
       modules: "['pipeline_e2e']"
       parallelism: ${{ matrix.parallelism }}
   pipeline_e2e_2_x:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     strategy:
       max-parallel: 2
       fail-fast: false
       matrix:
-        parallelism: [ 1, 4 ]
+        parallelism: [1, 4]
     name: Pipeline E2E Tests 2.x (${{ matrix.parallelism }}-Parallelism)
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
@@ -125,7 +135,7 @@ jobs:
       modules: "['pipeline_e2e']"
       parallelism: ${{ matrix.parallelism }}
   source_e2e:
-    if: github.repository == 'apache/flink-cdc'
+    if: always()
     name: Source E2E Tests
     uses: ./.github/workflows/flink_cdc_base.yml
     with:
