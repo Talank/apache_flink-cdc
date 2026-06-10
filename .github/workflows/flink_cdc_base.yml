@@ -16,35 +16,10 @@
 name: Flink CDC Base Workflow
 
 on:
-  workflow_call:
-    inputs:
-      java-versions:
-        description: "Jdk versions to test against."
-        required: false
-        type: string
-        default: "['11']"
-      flink-versions:
-        description: "Flink versions to test against."
-        required: false
-        type: string
-        default: "['generic']"
-      modules:
-        description: "Flink CDC modules to test against."
-        required: true
-        type: string
-      parallelism:
-        description: "Flink parallelism."
-        required: false
-        type: number
-        default: 4
-      custom-maven-parameter:
-        description: "Custom maven parameter."
-        required: false
-        type: string
-
+  workflow_dispatch:
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       max-parallel: 20
@@ -53,6 +28,10 @@ jobs:
         java-version: ${{ fromJSON(inputs.java-versions) }}
         flink-version: ${{ fromJSON(inputs.flink-versions) }}
         module: ${{ fromJSON(inputs.modules) }}
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
     steps:
       - run: echo "Running CI pipeline for JDK version ${{ matrix.java-version }}"
       - name: Clean up disk space
@@ -99,19 +78,19 @@ jobs:
 
           modules=$(./.github/workflows/modules.py test "${{ matrix.module }}")
           compile_modules=$(./.github/workflows/modules.py compile "${{ matrix.module }}")
-          
+
           build_maven_parameter="-DspecifiedMongoVersion=8.0.14"
 
           if [ ! -z "${{ matrix.flink-version }}" ]; then
             build_maven_parameter="${build_maven_parameter:+$build_maven_parameter }-DspecifiedFlinkVersion=${{ matrix.flink-version }}"
           fi
-          
+
           build_maven_parameter="${build_maven_parameter:+$build_maven_parameter }${{ inputs.custom-maven-parameter }}"
-          
+
           mvn --no-snapshot-updates -B -DskipTests ${{ inputs.custom-maven-parameter }} -pl $compile_modules -am install && mvn --no-snapshot-updates -B $build_maven_parameter -pl $modules -DspecifiedParallelism=${{ inputs.parallelism }} -Duser.timezone=$jvm_timezone verify
 
       - name: Print JVM thread dumps when cancelled
-        if: ${{ failure() }}
+        if: always()
         run: |
           echo "$OSTYPE"
           if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v sudo &> /dev/null; then
